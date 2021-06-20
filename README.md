@@ -35,3 +35,5 @@ It takes input from the user for:
 I am thinking of adding more stuff in the future but for now this is all.
 Any suggestions are welcome.
 
+mysql_secure_installation automation is taken from here <script src="https://gist.github.com/Mins/4602864.js"></script>
+
