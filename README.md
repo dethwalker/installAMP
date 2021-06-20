@@ -22,11 +22,11 @@ https://fedoramagazine.org/howto-install-wordpress-fedora/#:~:text=%20How%20to%2
 
 It takes input from the user for:
 
-"ServerAdmin" in /etc/httpd/conf/httpd.conf
-"ServerName" in /etc/httpd/conf/httpd.conf
-WordPress database name
-WP database username
-WP database password
+-"ServerAdmin" in /etc/httpd/conf/httpd.conf
+-"ServerName" in /etc/httpd/conf/httpd.conf
+-WordPress database name
+-WP database username
+-WP database password
 
 I am thinking of adding more stuff in the future but for now this is all.
 Any suggestions are welcome.
