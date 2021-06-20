@@ -21,6 +21,7 @@ https://www.server-world.info/en/note?os=Fedora_33&p=mariadb&f=1
 https://fedoramagazine.org/howto-install-wordpress-fedora/#:~:text=%20How%20to%20install%20WordPress%20on%20Fedora%20,so%20the%20web%20server%20can%20perform...%20More%20
 
 It takes input from the user for:
+
 "ServerAdmin" in /etc/httpd/conf/httpd.conf
 "ServerName" in /etc/httpd/conf/httpd.conf
 WordPress database name
