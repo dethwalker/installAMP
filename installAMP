@@ -1,0 +1,138 @@
+#!/bin/bash
+
+#Install and configure Apache
+dnf -y install httpd
+
+#User input for ServerAdmin and ServerName lines in httpd.conf
+read -p "Admin email: " admin_email
+read -p "Server Name(Example: localhost:80): " server_name
+
+#This is for debugging reasons
+printf "ServerAdmin %s\n" "$admin_email"
+printf "ServerName %s\n" "$server_name"
+
+
+#Edit httpd.conf and set some fields
+printf "Editing httpd.conf file\n"
+sed -i "89 s/^ServerAdmin.*/ServerAdmin ${admin_email}/" /etc/httpd/conf/httpd.conf
+sed -i "98 s/.*/ServerName ${server_name}/" /etc/httpd/conf/httpd.conf
+sed -i "147 s/Indexes.//" /etc/httpd/conf/httpd.conf
+sed -i "154 s/None/All/" /etc/httpd/conf/httpd.conf
+sed -i "167 s/DirectoryIndex.*/DirectoryIndex index.html index.php index.cgi/" /etc/httpd/conf/httpd.conf
+
+#The following is for security reasons
+printf "Security check\n"
+check_tokens=$(grep ServerTokens /etc/httpd/conf/httpd.conf)
+printf "%s\n" "$check_tokens"
+check_signature=$(grep ServerSignature /etc/httpd/conf/httpd.conf)
+printf "%s\n" "$check_signature"
+
+if [[ -z $check_signature ]]; then
+        printf "Adding ServerSignature Off\n"
+        echo "ServerSignature Off" >> /etc/httpd/conf/httpd.conf
+fi
+
+
+if [[ -z $check_tokens ]]; then
+	printf "Adding ServerTokens Prod\n"
+	echo "ServerTokens Prod" >> /etc/httpd/conf/httpd.conf
+fi
+
+systemctl enable --now httpd
+
+firewall-cmd --add-service=http --permanent
+firewall-cmd --reload
+
+#Install PHP and create info page
+printf "Installing PHP\n"
+dnf -y install php php-mbstring php-pear
+
+systemctl restart httpd
+printf "Creating PHP info page\n"
+echo '<?php phpinfo(); ?>' > /var/www/html/info.php
+
+
+
+#Install mariaDB 
+printf "Installing MariaDB\n"
+dnf -y install mariadb-server
+
+printf "Configuring charset to utf8mb4\n"
+touch /etc/my.cnf.d/charset.cnf
+
+echo -e "[mysqld]" > /etc/my.cnf.d/charset.cnf
+echo -e "character-set-server = utf8mb4" >> /etc/my.cnf.d/charset.cnf
+echo -e "\n[client]" >> /etc/my.cnf.d/charset.cnf
+echo -e "default-character-set = utf8mb4" >> /etc/my.cnf.d/charset.cnf
+
+systemctl enable --now mariadb
+
+#Remote login into mysql server is not a good idea for security 
+#firewall-cmd --add-service=mysql --permanent
+#firewall-cmd --reload
+
+#The expect program is required for the next step and is removed afterwards
+printf "Starting mysql_secure_installation configuration\n"
+dnf -y install expect
+
+#RUN mysql_secure_installation script for initial configuration
+SECURE_MYSQL=$(expect -c "
+
+set timeout 5
+spawn mysql_secure_installation
+
+expect \"Enter current password for root (enter for none):\"
+send \"\r\"
+
+expect \"Switch to unix_socket authentication \"
+send \"n\r\"
+
+expect \"Change the root password? \"
+send \"n\r\"
+
+expect \"Remove anonymous users? \"
+send \"y\r\"
+
+expect \"Disallow root login remotely? \"
+send \"y\r\"
+
+expect \"Remove test database and access to it?\"
+send \"y\r\"
+
+expect \"Reload privilege tables now? \"
+send \"y\r\"
+
+expect eof
+")
+
+echo "$SECURE_MYSQL"
+
+#Removal of expect program
+dnf -y remove expect
+
+
+#Install and configure WORDPRESS
+printf "Starting WordPress Installation\n"
+dnf -y install wordpress php-mysqlnd
+
+systemctl restart mariadb
+
+#User input for WP database
+read -p "The name of the WP database: " wp_db_name
+read -p "WP database user: " wp_db_user
+read -p "WP database password: " wp_db_pass
+
+#Creation of WP database
+printf "Creating WordPress database\n"
+mysql -e "create database ${wp_db_name};"
+mysql -e "grant all privileges on ${wp_db_name}.* to '${wp_db_user}'@'localhost' identified by '${wp_db_pass}';"
+mysql -e "flush privileges;"
+
+#Configuration of WP
+printf "Configuring WordPress files\n"
+sed -i "23 s/database_name_here/${wp_db_name}/" /etc/wordpress/wp-config.php
+sed -i "26 s/username_here/${wp_db_user}/" /etc/wordpress/wp-config.php
+sed -i "29 s/password_here/${wp_db_pass}/" /etc/wordpress/wp-config.php
+sed -i "s/Require local/Require all granted/" /etc/httpd/conf.d/wordpress.conf
+
+systemctl restart httpd
