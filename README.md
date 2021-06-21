@@ -5,6 +5,9 @@ WARNING!
 The idea of this project is for me to learn bash scripting.
 This code may not be ideal.
 This code has only been tested on Fedora 33 Server.
+Do not run if you have any of the programs installed or if any of the configuration files are already configured because it may mess things up! 
+
+Requirements: must be root
 
 What does this code do?
 
